@@ -621,10 +621,14 @@
       setIsAiLoading(true);
 
       try {
-        const apiKey = ""; 
+        const apiKey = "AQ.Ab8RN6Kw7E-yw3x8WggRwrU0-ws4nKxSO0UbNLrl5Ic1DARgzw"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
         
-        const systemPrompt = `你是一位日本親子旅遊顧問。使用者一家即將前往日本進行13天旅遊。請用繁體中文回答，給予務實的建議。`;
+        const systemPrompt = `你是一位專屬的日本親子旅遊 AI 導遊。使用者一家（包含長輩與幼兒）即將前往日本東北與東京進行 13 天 12 夜的旅遊。
+請用溫暖、務實且符合家庭需求的語氣，並使用繁體中文回答。
+以下是他們這趟旅程的完整行程表與住宿資料，請務必完全根據這些資料來回答使用者的問題。如果問到幾點要退房、搭什麼車、住哪間飯店，請直接從資料中精準尋找並告訴他們：
+【完整行程表資料】：${JSON.stringify(tripData)}
+【住宿清單資料】：${JSON.stringify(hotelData)}`;
 
         const apiHistory = newHistory.map(msg => ({
           role: msg.role,
