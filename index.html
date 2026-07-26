@@ -43,7 +43,7 @@
       background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
       color: white; padding: 25px 15px 20px; text-align: center;
       border-bottom-left-radius: 25px; border-bottom-right-radius: 25px;
-      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2); position: sticky; top: 0; z-index: 10; margin-bottom: 10px;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2); position: relative; z-index: 10; margin-bottom: 10px;
     }
     header h1 { margin: 0; font-size: 24px; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); letter-spacing: 2px; }
     
@@ -186,15 +186,19 @@
       {
         date: "1/25 (一)",
         title: "青森 ➔ 仙台 移動＋市區採購日",
-        hotel: "仙台西口大和魯內 PREMIER 飯店",
+        hotel: "仙台大和ROYNET飯店 仙台西口 PREMIER",
         luggage: "🧳 大行李親手直進仙台飯店房間！",
         transBadge: "🚄 東北新幹線 (不租車)",
         badgeColor: "#ef4444",
         itinerary: [
-          { time: "10:00", name: "輕鬆退房 ➔ 搭乘東北新幹線", icon: "🚄", info: "搭乘新幹線直達仙台（車程約 1.5 小時）。", mapQuery: "仙台車站", transit: "🚶 抵達仙台，步行約 5 分鐘抵達飯店" },
-          { time: "12:00", name: "仙台西口 PREMIER 丟行李", icon: "🏨", info: "車站出站即達！把 6 件大行李和推車推進房間，無事一身輕！", mapQuery: "ダイワロイネットホテル仙台西口 PREMIER", transit: "🚶 步行前往排隊吃牛舌" },
-          { time: "13:30", name: "必吃極品：厚切牛舌", icon: "🥩", info: "全家品嚐仙台最人氣的炭烤厚切牛舌，補充體力！", mapQuery: "善治郎 仙台站前本店", transit: "🚶 步行前往名掛丁商店街" },
-          { time: "15:30", name: "名掛丁商店街 & PARCO", icon: "🛍️", info: "有遮雨棚的熱鬧商店街，藥妝、服飾與阿卡將一次逛足！", mapQuery: "ハピナ名掛丁", transit: "🚶 滿載戰利品，步行回飯店" }
+          { time: "10:30", name: "輕鬆退房", icon: "🏨", info: "在 Daiwa Roynet Hotel 青森 悠閒早餐後辦理 Check-out。", mapQuery: "Daiwa Roynet Hotel Aomori", transit: "🚶 步行至青森站前商場" },
+          { time: "10:45", name: "買火車便當", icon: "🍱", info: "步行至青森站前商場（如 LOVINA 或站內店鋪）挑選青森海鮮/帆立貝鐵道便當、蘋果汁。", mapQuery: "LOVINA 青森", transit: "🚆 搭電車 1 站 或 🚕 計程車" },
+          { time: "11:20", name: "前往新青森站", icon: "🚉", info: "搭電車 1 站（約 6 分鐘）或搭計程車前往「新青森站」。", mapQuery: "新青森車站", transit: "🚄 轉乘東北新幹線" },
+          { time: "11:52", name: "新幹線午餐派對", icon: "🚄", info: "搭乘 隼號 Hayabusa 22號（需提前劃位指定席及特大行李位），在新幹線上享用美味便當，欣賞沿途雪景直達仙台。", mapQuery: "仙台車站", transit: "🚶 順著連通道走 3 分鐘" },
+          { time: "13:45", name: "彈性自由時間", icon: "☕", info: "抵達仙台站，順著連通道走 3 分鐘至 Daiwa Roynet Hotel 仙台西口 PREMIER，自由安排休息、逛車站或至大廳等候。", mapQuery: "Daiwa Roynet Hotel Sendai Nishiguchi PREMIER", transit: "🏨 準備辦理入住" },
+          { time: "15:00", name: "Check-in 入住", icon: "🏨", info: "時間一到親手將 6 件大行李與 2 台推車推進房間放好。", mapQuery: "Daiwa Roynet Hotel Sendai Nishiguchi PREMIER", transit: "🚶 步行輕鬆逛街" },
+          { time: "15:30", name: "仙台市區散步購物", icon: "🛍️", info: "輕鬆逛名掛丁拱廊商店街、PARCO 或 Yodobashi。", mapQuery: "ハピナ名掛丁", transit: "🚶 步行前往晚餐名店" },
+          { time: "18:00", name: "晚餐：炭燒厚切牛舌", icon: "🥩", info: "享用仙台著名的炭燒厚切牛舌名店（如：善治郎、利久或喜助）。", mapQuery: "善治郎 仙台站前本店" }
         ]
       },
       {
@@ -690,12 +694,11 @@
                 <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 5px' }}>
                   <span style={{ fontSize: '18px' }}>🗺️</span> <span>東北專屬行程地圖</span>
                 </h3>
-                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #bfdbfe', width: '100%', position: 'relative' }}>
+                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #bfdbfe', width: '100%', position: 'relative', minHeight: '350px' }}>
                   <iframe 
                     src="https://www.google.com/maps/d/embed?mid=10EbFUxvP-DDu6BVu_ckdjyUPsBfvZhI&ehbc=2E312F" 
-                    style={{ border: 0, display: 'block', width: '100%', height: '350px' }} 
+                    style={{ border: 0, display: 'block', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} 
                     allowFullScreen="" 
-                    loading="lazy" 
                     referrerPolicy="no-referrer-when-downgrade"
                   ></iframe>
                 </div>
