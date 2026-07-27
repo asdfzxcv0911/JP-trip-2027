@@ -443,7 +443,7 @@
       room: "家庭房型",
       mapQuery: "新宿車站 飯店",
       color: "#f43f5e", bg: "#fff1f2", border: "#fecdd3",
-      tips: ["🚇 交通無敵：去讀賣樂園搭京王線免轉車，回國搭 N'EX 直達機場！"]
+      tips: ["🚇 交通無敵：去讀賣樂園搭京王線免轉車，回國搭 N'EX直達機場！"]
     }
   ];
 
@@ -515,7 +515,6 @@
     const [showTransferGuide, setShowTransferGuide] = useState(false);
     const guideScrollRef = useRef(null);
 
-    // 每次打開視窗時，強制讓內容滾動到最頂部
     useEffect(() => {
       if (showTransferGuide && guideScrollRef.current) {
         guideScrollRef.current.scrollTop = 0;
@@ -547,17 +546,43 @@
       { name: "LI,BABY", icon: "👶", seat: "-", bag: "-" }
     ];
 
-    const [aiHistory, setAiHistory] = useState([
-      { role: 'model', parts: [{ text: '哈囉！我是你們的專屬 AI 導遊 🤖。\n我已經熟讀了你們這 13 天的東北與東京行程，有任何問題隨時都可以問我喔！' }] }
-    ]);
-    const [inputAiText, setInputAiText] = useState("");
-    const [isAiLoading, setIsAiLoading] = useState(false);
-    const chatEndRef = useRef(null);
-
     const tabsRef = useRef(null);
     const [isDown, setIsDown] = useState(false);
     const startX = useRef(0);
     const scrollLeft = useRef(0);
+
+    const scrollToHotel = (index) => {
+      const el = document.getElementById(`hotel-card-${index}`);
+      if (el) {
+        // 抓取該卡片的位置，並往上預留 15px 避免太貼齊邊緣
+        const y = el.getBoundingClientRect().top + window.pageYOffset - 15;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    };
+
+    useEffect(() => {
+      if (tab === 'hotel') {
+        // 稍微延遲執行，確保畫面已經切換過去
+        setTimeout(() => {
+          const today = new Date();
+          const m = today.getMonth() + 1;
+          const d = today.getDate();
+          
+          let targetIdx = 0; // 預設停在第一間 (青森)
+          
+          // 根據旅遊真實日期，自動判斷今天要住哪間
+          if (m === 1) {
+            if (d >= 25 && d < 28) targetIdx = 1;      // 仙台 (第一階段)
+            else if (d === 28) targetIdx = 2;          // 銀山溫泉
+            else if (d >= 29 && d <= 31) targetIdx = 3; // 仙台 (第二階段)
+          } else if (m === 2) {
+            if (d <= 4) targetIdx = 4;                 // 新宿
+          }
+          
+          scrollToHotel(targetIdx);
+        }, 150);
+      }
+    }, [tab]);
 
     const onMouseDown = (e) => {
       setIsDown(true);
@@ -580,17 +605,9 @@
     };
 
     useEffect(() => {
-      if (tab === 'ai') {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
-    }, [aiHistory, tab]);
-
-    // ===== 關鍵更新：切換頁籤或天數時，畫面自動回到最頂端 =====
-    useEffect(() => {
       window.scrollTo(0, 0); 
     }, [tab, dayIdx]);
 
-    // ===== 關鍵更新：自動將目前選擇的天數按鈕，滑動置中顯示在上方橫向捲軸中 =====
     useEffect(() => {
       if (tab === 'itinerary' && tabsRef.current) {
         setTimeout(() => {
@@ -611,66 +628,12 @@
       localStorage.setItem('tohokuPackState', JSON.stringify(nextState));
     };
 
-    const handleAskAI = async () => {
-      if (!inputAiText.trim()) return;
-      const userMessage = inputAiText.trim();
-      setInputAiText("");
-      
-      const newHistory = [...aiHistory, { role: "user", parts: [{ text: userMessage }] }];
-      setAiHistory(newHistory);
-      setIsAiLoading(true);
-
-      try {
-        const apiKey = "AQ.Ab8RN6Kw7E-yw3x8WggRwrU0-ws4nKxSO0UbNLrl5Ic1DARgzw"; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-        
-        const systemPrompt = `你是一位專屬的日本親子旅遊 AI 導遊。使用者一家（包含長輩與幼兒）即將前往日本東北與東京進行 13 天 12 夜的旅遊。
-請用溫暖、務實且符合家庭需求的語氣，並使用繁體中文回答。
-以下是他們這趟旅程的完整行程表與住宿資料，請務必完全根據這些資料來回答使用者的問題。如果問到幾點要退房、搭什麼車、住哪間飯店，請直接從資料中精準尋找並告訴他們：
-【完整行程表資料】：${JSON.stringify(tripData)}
-【住宿清單資料】：${JSON.stringify(hotelData)}`;
-
-        const apiHistory = newHistory.map(msg => ({
-          role: msg.role,
-          parts: msg.parts.map(p => ({ text: p.text }))
-        }));
-
-        const payload = {
-          contents: apiHistory,
-          systemInstruction: { parts: [{ text: systemPrompt }] }
-        };
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (result.candidates && result.candidates.length > 0) {
-          const aiResponseText = result.candidates[0].content.parts[0].text;
-          setAiHistory(prev => [...prev, { role: "model", parts: [{ text: aiResponseText }] }]);
-        } else {
-          setAiHistory(prev => [...prev, { role: "model", parts: [{ text: "訊號中斷了，可以再問我一次嗎？ ❄️" }] }]);
-        }
-      } catch (error) {
-        console.error("AI Error:", error);
-        setAiHistory(prev => [...prev, { role: "model", parts: [{ text: "網路連線好像有點問題，請稍後再試試看喔！🛜" }] }]);
-      } finally {
-        setIsAiLoading(false);
-      }
-    };
-
-    const handleAiKeyPress = (e) => {
-      if (e.key === 'Enter') handleAskAI();
-    };
-
     let itemCounter = 0;
 
     return (
       <div id="app-container">
         <SnowEffect />
-        {/* 只有在首頁才顯示大標題，但移除 sticky 讓它可以自然往上捲動 */}
+        
         {tab === 'home' && (
           <header>
             <h1>❄️ 東北冬日溫泉之旅</h1>
@@ -703,7 +666,6 @@
             <div>
               <div className="page-title">🏠 行前首頁</div>
               
-              {/* ====== 東北景點地圖 ====== */}
               <div className="section-card" style={{ borderColor: '#3b82f6', padding: '10px' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 5px' }}>
                   <span style={{ fontSize: '18px' }}>🗺️</span> <span>東北專屬行程地圖</span>
@@ -726,7 +688,6 @@
                 </a>
               </div>
 
-              {/* 匯率計算機 */}
               <div className="section-card" style={{ borderColor: '#8b5cf6' }}>
                 <h3 style={{ marginTop: 0, color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>💴</span> <span>日幣購物小算盤</span>
@@ -750,7 +711,6 @@
                 </div>
               </div>
 
-              {/* 每日口訣 */}
               <div className="section-card" style={{ borderColor: '#10b981' }}>
                 <h3 style={{ marginTop: 0, color: '#047857', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '18px' }}>💡</span> 冬季親子每日出門口訣</h3>
                 <ul style={{ margin: 0, paddingLeft: '20px', color: '#334155', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.7' }}>
@@ -761,7 +721,6 @@
                 </ul>
               </div>
 
-              {/* 常用連結 */}
               <div className="section-card" style={{ borderColor: '#ec4899', marginBottom: 0 }}>
                 <h3 style={{ marginTop: 0, color: '#be185d', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '18px' }}>🔗</span> 行前與緊急常用連結</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -796,11 +755,9 @@
                 >🚗 租車</button>
               </div>
 
-              {/* 航班資訊 */}
               {transTab === 'flight' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   
-                  {/* 🛫 去程航班 */}
                   <div className="section-card" style={{ borderColor: 'var(--blue)', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: 'var(--blue)', color: '#1e3a8a', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontWeight: 900 }}>🛫 去程 | 1/23 (六)</div>
@@ -842,7 +799,6 @@
                     </div>
                   </div>
 
-                  {/* 🛬 回程航班 */}
                   <div className="section-card" style={{ borderColor: '#f43f5e', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#f43f5e', color: 'white', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontWeight: 900 }}>🛬 回程 | 2/04 (四)</div>
@@ -884,14 +840,11 @@
                     </div>
                   </div>
 
-                  {/* ====== 亞航行李與違禁品規定重點 ====== */}
                   <div className="section-card" style={{ borderColor: '#ef4444', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#ef4444', color: 'white', padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>🎒</span> <span style={{ fontWeight: 900 }}>AirAsia 行李與違禁品規定重點</span>
                     </div>
                     <div style={{ padding: '15px' }}>
-                      
-                      {/* 手提行李額度 */}
                       <div style={{ marginBottom: '15px' }}>
                         <div style={{ fontWeight: 900, color: '#b91c1c', fontSize: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ background: '#fee2e2', padding: '4px 8px', borderRadius: '8px' }}>手提行李額度</span>
@@ -902,8 +855,6 @@
                           <li><strong style={{ color: '#991b1b' }}>兒童規定：</strong>2歲以上兒童額度同成人；嬰兒推車（兒童正在使用中）可免費託運。</li>
                         </ul>
                       </div>
-
-                      {/* 違禁品與電池 */}
                       <div>
                         <div style={{ fontWeight: 900, color: '#b45309', fontSize: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ background: '#fef3c7', padding: '4px 8px', borderRadius: '8px' }}>電池與違禁品 (安全須知)</span>
@@ -927,11 +878,9 @@
                 </div>
               )}
 
-              {/* 鐵道資訊 */}
               {transTab === 'shinkansen' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   
-                  {/* ====== 成田機場到東京車站轉乘攻略 ====== */}
                   <div className="section-card" style={{ borderColor: '#dc2626', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#dc2626', color: 'white', padding: '12px 18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>🗺️</span> <span>成田機場 ➔ 東京轉乘新幹線全攻略</span>
@@ -941,7 +890,6 @@
                         本攻略專為家庭旅遊、攜帶大行李與推車設計。分為三大步驟：【機場購票】、【搭車進城】與【車站內跨樓層超流長轉乘】。
                       </div>
 
-                      {/* YouTube 教學影片按鈕 */}
                       <a 
                         href="https://www.youtube.com/watch?v=kbQ4gEJZmOk" 
                         target="_blank" 
@@ -954,7 +902,6 @@
                         搭N'EX從成田機場到東京車站流程教學
                       </a>
 
-                      {/* STEP 1 */}
                       <div style={{ marginBottom: '20px' }}>
                         <div style={{ fontWeight: 900, color: '#b91c1c', fontSize: '15px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ background: '#fee2e2', padding: '4px 8px', borderRadius: '8px' }}>STEP 1</span> 機場出關、購票與乘車
@@ -971,7 +918,6 @@
                         </ul>
                       </div>
 
-                      {/* STEP 2 */}
                       <div>
                         <div style={{ fontWeight: 900, color: '#047857', fontSize: '15px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ background: '#d1fae5', padding: '4px 8px', borderRadius: '8px' }}>STEP 2</span> 東京車站下車，跨樓層核心轉乘動線
@@ -980,7 +926,6 @@
                           🚨 關鍵心理準備：N'EX 列車會停靠在東京車站的「總武地下月台（地下 5 樓）」，而東北新幹線的月台是在「地面上 2 樓」。您需要帶著行李完成一次「從 B5 到 2F」的垂直移動。請跟著以下明確的步驟走，完全不需要走出東京車站的大型外圍剪票口：
                         </div>
                         
-                        {/* 垂直動線軸 */}
                         <div style={{ borderLeft: '3px solid #34d399', marginLeft: '8px', paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '15px', fontSize: '13px', fontWeight: 'bold', color: '#334155', lineHeight: 1.6 }}>
                           <div style={{ position: 'relative' }}>
                             <div style={{ position: 'absolute', left: '-24px', top: '3px', width: '14px', height: '14px', background: '#10b981', borderRadius: '50%', border: '3px solid white' }}></div>
@@ -1016,7 +961,6 @@
                         </div>
                       </div>
 
-                      {/* 貼心提醒 */}
                       <div style={{ background: '#f0f9ff', border: '1px dashed #7dd3fc', borderRadius: '8px', padding: '12px', marginTop: '20px' }}>
                         <div style={{ fontWeight: 900, color: '#0284c7', fontSize: '14px', marginBottom: '8px' }}>💡 攻略重點貼心提醒（適合家庭與手推車）</div>
                         <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#0369a1', fontWeight: 'bold', lineHeight: 1.5 }}>
@@ -1027,7 +971,6 @@
                     </div>
                   </div>
 
-                  {/* ====== 票價與幼兒規定 ====== */}
                   <div className="section-card" style={{ borderColor: '#f59e0b', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#f59e0b', color: 'white', padding: '12px 18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>💴</span> <span>票價與嬰幼兒規定</span>
@@ -1045,11 +988,9 @@
                 </div>
               )}
 
-              {/* 租車資訊 */}
               {transTab === 'rental' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   
-                  {/* 自駕明細 */}
                   <div className="section-card" style={{ borderColor: '#10b981', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#10b981', color: 'white', padding: '12px 18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>🚙</span> <span>自駕租車明細 (仙台取還)</span>
@@ -1113,7 +1054,6 @@
                     </div>
                   </div>
                   
-                  {/* 雪地安全守則 */}
                   <div className="section-card" style={{ borderColor: '#3b82f6', padding: 0, overflow: 'hidden', marginBottom: 0 }}>
                     <div style={{ background: '#3b82f6', color: 'white', padding: '12px 18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>❄️</span> <span>雪地自駕安全守則</span>
@@ -1136,10 +1076,29 @@
           {tab === 'hotel' && (
             <div>
               <div className="page-title">🏨 住宿清單</div>
+
+              {}
+              <div style={{ display: 'flex', gap: '5px', flexWrap: 'nowrap', justifyContent: 'space-between', marginBottom: '20px', padding: '0 5px' }}>
+                {hotelData.map((h, i) => {
+                  // 把名字縮短，例如「宮城 ‧ 仙台」只顯示「仙台」
+                  const shortCity = h.city.includes('‧') ? h.city.split('‧')[1].trim() : h.city;
+                  return (
+                    <button 
+                      key={`btn-${i}`} 
+                      onClick={() => scrollToHotel(i)}
+                      style={{ flex: 1, padding: '8px 2px', borderRadius: '10px', border: `2px solid ${h.color}`, background: 'white', color: h.color, fontWeight: 900, cursor: 'pointer', boxShadow: `0 3px 0 ${h.color}`, transition: 'all 0.1s', fontSize: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}
+                    >
+                      {shortCity}
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>{h.checkIn.split(' ')[0]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
               {hotelData.map((hotel, idx) => {
                 const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.mapQuery)}`;
                 return (
-                  <div key={idx} className="section-card" style={{ borderColor: hotel.color, padding: 0, overflow: 'hidden' }}>
+                  <div key={idx} id={`hotel-card-${idx}`} className="section-card" style={{ borderColor: hotel.color, padding: 0, overflow: 'hidden' }}>
                     <div style={{ background: hotel.color, color: 'white', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontWeight: 900 }}>{hotel.checkIn} ~ {hotel.checkOut}</div>
                       <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '15px', fontSize: '13px', fontWeight: 900 }}>
@@ -1193,13 +1152,12 @@
             </div>
           )}
 
-          {/* ====== 13天終極版行程頁面 ====== */}
+          {/* ====== 行程頁面 ====== */}
           {tab === 'itinerary' && (() => {
             const currentDay = tripData.days[dayIdx];
             
             return (
               <div>
-                {/* 當日大標題與租車/移動狀態 */}
                 <div style={{ marginBottom: '15px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>{currentDay.title}</h3>
                   {currentDay.transBadge && (
@@ -1217,7 +1175,6 @@
                   )}
                 </div>
 
-                {/* 每日專屬：住宿與行李狀態看板 */}
                 <div className="section-card" style={{ background: '#f8fafc', borderColor: '#cbd5e1', padding: '12px 16px', marginBottom: '15px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 900, color: '#334155', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>🌙 晚間住宿：</span><span style={{ color: '#2563eb' }}>{currentDay.hotel}</span>
@@ -1227,7 +1184,6 @@
                   </div>
                 </div>
 
-                {/* 每日行程步驟卡片 */}
                 {currentDay.itinerary.map((step, idx) => {
                   const targetQuery = step.mapQuery || step.name;
                   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetQuery)}`;
@@ -1242,8 +1198,9 @@
                         </div>
                         {step.info && <p style={{ fontSize: '13px', color: '#64748b', margin: '6px 0 12px', fontWeight: 'bold', lineHeight: '1.5' }}>{step.info}</p>}
                         
-                        <div style={{ display: 'flex', justifyContent: (dayIdx === 0 && idx === 3) ? 'space-between' : 'flex-end', alignItems: 'center', marginTop: '8px', borderTop: '1px dashed #e2e8f0', paddingTop: '10px', gap: '8px' }}>
-                          {/* ====== 東京轉乘攻略按鈕 (Day 1, 16:00 行程) ====== */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', borderTop: '1px dashed #e2e8f0', paddingTop: '10px', gap: '8px' }}>
+                          
+                          {/* ====== 東京轉乘攻略按鈕 (完美保留您的精巧並排設計) ====== */}
                           {dayIdx === 0 && idx === 3 && (
                             <button 
                               onClick={() => setShowTransferGuide(true)}
@@ -1253,6 +1210,7 @@
                               📖 轉乘全攻略
                             </button>
                           )}
+
                           <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="map-btn">
                             🗺️ 開啟導航
                           </a>
@@ -1297,44 +1255,6 @@
               ))}
             </div>
           )}
-
-          {/* ====== AI 導遊頁面 ====== */}
-          {tab === 'ai' && (
-            <div className="chat-container">
-              <div className="page-title">🤖 AI 專屬導遊</div>
-              <div className="chat-history">
-                {aiHistory.map((msg, idx) => (
-                  <div key={idx} className={`msg-bubble ${msg.role === 'user' ? 'msg-user' : 'msg-ai'}`}>
-                    {msg.parts[0].text.split('\n').map((line, i) => (
-                      <React.Fragment key={i}>{line}<br/></React.Fragment>
-                    ))}
-                  </div>
-                ))}
-                {isAiLoading && (
-                  <div className="msg-bubble msg-ai">
-                    <div className="typing-indicator">
-                      <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="chat-input-area">
-                <input 
-                  type="text" 
-                  className="chat-input" 
-                  placeholder="試著問行程、餐廳或行李備品..." 
-                  value={inputAiText}
-                  onChange={(e) => setInputAiText(e.target.value)}
-                  onKeyPress={handleAiKeyPress}
-                  disabled={isAiLoading}
-                />
-                <button className="send-btn" onClick={handleAskAI} disabled={isAiLoading || !inputAiText.trim()}>
-                  發送 ✈️
-                </button>
-              </div>
-            </div>
-          )}
         </main>
 
         <footer>
@@ -1343,7 +1263,6 @@
           <div className={`foot-item ${tab === 'hotel' ? 'active' : ''}`} onClick={() => setTab('hotel')}><span>🏨</span>住宿</div>
           <div className={`foot-item ${tab === 'itinerary' ? 'active' : ''}`} onClick={() => setTab('itinerary')}><span>🗓️</span>行程</div>
           <div className={`foot-item ${tab === 'pack' ? 'active' : ''}`} onClick={() => setTab('pack')}><span>🎒</span>行李</div>
-          <div className={`foot-item ${tab === 'ai' ? 'active' : ''}`} onClick={() => setTab('ai')}><span>🤖</span>導遊</div>
         </footer>
 
         {/* ====== 東京轉乘攻略 獨立彈出視窗 ====== */}
